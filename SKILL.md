@@ -23,16 +23,10 @@ already accounts for shell startup overhead so you're not measuring bash instead
 command -v hyperfine
 ```
 
-If missing, install it (prefer the OS/language package manager already in use in the project):
-
-```bash
-brew install hyperfine          # macOS / Linuxbrew
-cargo install hyperfine          # any platform with a Rust toolchain
-conda install -c conda-forge hyperfine
-sudo apt install hyperfine       # Debian/Ubuntu (may lag behind the latest release)
-```
-
-Or download a prebuilt binary from <https://github.com/sharkdp/hyperfine/releases>.
+If missing, install with the package manager the project/OS already uses, falling back in this order:
+`brew install hyperfine` (macOS/Linuxbrew) → `sudo apt install hyperfine` (Debian/Ubuntu, may lag behind the latest
+release) → `cargo install hyperfine` (works anywhere with a Rust toolchain) → a prebuilt binary from
+<https://github.com/sharkdp/hyperfine/releases>.
 
 ## Step 1: Run the benchmark
 
@@ -55,6 +49,11 @@ a simple, already-fast command:
 | Command is slow (seconds+)                                                  | `-m/--min-runs`, `-M/--max-runs`, or `-r/--runs <N>` | Hyperfine defaults to at least 10 runs with no default cap: a 45s command becomes a 7.5-minute benchmark unless you bound it. Use `-r 3` for something you know is slow and consistent, or `-M 5` to cap an otherwise auto-tuned run.    |
 | Command is expected to fail / return non-zero                               | `-i, --ignore-failure[=<MODE>]`                      | Without this, hyperfine aborts the whole benchmark on the first non-zero exit.                                                                                                                                                           |
 | Program special-cases output going to `/dev/null` (e.g. `grep` skips work)  | `--output=pipe`                                      | Feeds output through a real pipe instead of hyperfine's default `null`, so the program can't take a shortcut that a real caller wouldn't get.                                                                                            |
+
+Gotcha: hyperfine's `<command>...` argument is variadic - each separate word or `--`-separated token becomes its own
+command to benchmark and compare, not a shared argv. `hyperfine -- grep -rn the .` runs four one-word benchmarks
+(`grep`, `-rn`, `the`, `.`), not one `grep` invocation with three arguments, and the first of those fails immediately.
+Always wrap a command that has its own flags or arguments in a single quoted string: `hyperfine 'grep -rn the .'`.
 
 ## Step 2: Comparing commands
 
