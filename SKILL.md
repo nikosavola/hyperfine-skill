@@ -50,10 +50,13 @@ a simple, already-fast command:
 | Command is expected to fail / return non-zero                               | `-i, --ignore-failure[=<MODE>]`                      | Without this, hyperfine aborts the whole benchmark on the first non-zero exit.                                                                                                                                                           |
 | Program special-cases output going to `/dev/null` (e.g. `grep` skips work)  | `--output=pipe`                                      | Feeds output through a real pipe instead of hyperfine's default `null`, so the program can't take a shortcut that a real caller wouldn't get.                                                                                            |
 
-Gotcha: hyperfine's `<command>...` argument is variadic - each separate word or `--`-separated token becomes its own
-command to benchmark and compare, not a shared argv. `hyperfine -- grep -rn the .` runs four one-word benchmarks
-(`grep`, `-rn`, `the`, `.`), not one `grep` invocation with three arguments, and the first of those fails immediately.
-Always wrap a command that has its own flags or arguments in a single quoted string: `hyperfine 'grep -rn the .'`.
+Gotcha: never pass a multi-word command as separate unquoted tokens - it breaks two different ways depending on whether
+you add `--` first. Without `--`, hyperfine's own arg parser tries to consume the command's flags as its own:
+`hyperfine grep -c TODO -r .` fails because `-c` and `-r` collide with hyperfine's `--cleanup`/`--runs`. Add `--` to
+stop that, and it breaks differently: `hyperfine -- grep -rn the .` runs four separate one-word benchmarks (`grep`,
+`-rn`, `the`, `.`), because hyperfine's `<command>...` argument is variadic - each token becomes its own command to
+compare, not a shared argv. Either way, the fix is the same: wrap the whole command in one quoted string,
+`hyperfine 'grep -rn the .'`.
 
 ## Step 2: Comparing commands
 
@@ -85,6 +88,12 @@ jq '.results[] | {command, mean, median, stddev}' results.json
 `--export-markdown FILE` is the right choice when the result is going straight into a PR description or a message to the
 user - it produces a ready-to-paste comparison table. See `references/export-and-analysis.md` for the full JSON schema,
 CSV/AsciiDoc/org-mode formats, and per-iteration logging via `$HYPERFINE_ITERATION`.
+
+Before declaring a winner in a comparison, check the two commands' `mean`s against their `stddev`s, not just which
+number is smaller: if the difference between them is smaller than their stddevs, that gap is noise, not a real result,
+even when hyperfine printed no warning about it (its outlier warning checks variance *within* one command's runs, not
+whether *two* commands are actually distinguishable from each other). Increase runs, add `--warmup`, or use a heavier
+workload so a real effect can separate from measurement noise, then re-check before reporting which one is faster.
 
 ## Step 4: Understand the warnings
 

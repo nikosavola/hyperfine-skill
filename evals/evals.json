@@ -93,6 +93,35 @@
         "The agent did not present a hyperfine invocation wrapping a fast in-process expression as a valid measurement of that expression's own runtime",
         "The agent used or recommended a language-native microbenchmarking approach (e.g. Python's timeit) instead"
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "We have three candidate implementations: `sleep 0.3` (current production), `sleep 0.2` (candidate A), and `sleep 0.15` (candidate B). I want every comparison measured against current production specifically as the fixed baseline, not whichever one happens to be fastest.",
+      "expected_output": "The agent uses hyperfine's --reference (optionally with --reference-name) to pin 'sleep 0.3' as the fixed comparison baseline, rather than relying on hyperfine's default behavior of comparing everything to whichever command turns out fastest.",
+      "expectations": [
+        "The agent used hyperfine's --reference flag to fix 'sleep 0.3' (current production) as the comparison baseline",
+        "The final comparison explicitly frames candidate A and candidate B's results relative to current production, not relative to whichever command was fastest overall"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Benchmark `date +%N` and save each individual run's printed output to its own file, so I can inspect what every single run actually printed, not just the aggregate timing stats. A handful of runs is enough, no need for hundreds.",
+      "expected_output": "The agent uses the $HYPERFINE_ITERATION environment variable inside the benchmarked command (with shell redirection) to write a distinct output file per run, and bounds the run count so it doesn't generate an excessive number of files.",
+      "expectations": [
+        "The agent used the $HYPERFINE_ITERATION environment variable in the benchmarked command to write a distinct file per run",
+        "Multiple distinct per-run output files were actually created on disk, one per iteration, each containing that run's own output",
+        "The agent bounded the run count (e.g. -m/-M/-r) rather than leaving hundreds of stray files from an unbounded default run"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Set up a couple of small files containing the word TODO in the current directory first (so there is something to count), then benchmark this command exactly as given, don't change it: `grep -c TODO -r .` It has its own flags that start with dashes, so make sure hyperfine doesn't get confused by them.",
+      "expected_output": "The agent passes the entire grep invocation to hyperfine as a single quoted string argument (e.g. hyperfine 'grep -c TODO -r .'), not as separate positional command arguments after `--`, since hyperfine's command argument is variadic and would otherwise treat each word as its own separate command to benchmark.",
+      "expectations": [
+        "The agent passed the entire grep command as a single string argument to hyperfine, not as multiple separate positional arguments (e.g. not `hyperfine -- grep -c TODO -r .`)",
+        "hyperfine actually benchmarked the one command 'grep -c TODO -r .' and produced real timing output for it, not a benchmark of a single word like 'grep' alone",
+        "If the agent's first attempt split the command into multiple positional arguments and failed, it correctly diagnosed why (hyperfine treats each word as a separate command, not shared argv) and fixed it, rather than reporting bogus per-word timings or giving up"
+      ]
     }
   ]
 }

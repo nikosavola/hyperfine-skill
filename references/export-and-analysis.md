@@ -50,6 +50,11 @@ A ready-to-paste GitHub-flavored table with a `Relative` column showing the spee
 command. Best default when the result is going into a PR description, issue comment, or chat reply - don't hand-format a
 table from the JSON/CSV when this already produces one.
 
+If you used `--reference` to pin a specific baseline (SKILL.md's Step 2), note that this `Relative` column ignores it -
+it's always normalized to whichever command was fastest, not your chosen reference. The terminal summary's "N.NN times
+slower/faster than `<reference>`" line is reference-aware; the exported table is not. If you need reference-relative
+numbers in the exported table itself, compute them from each command's `mean` in the JSON export instead.
+
 ## `--export-asciidoc FILE` / `--export-orgmode FILE`
 
 Same summary table as the Markdown export, in AsciiDoc or Emacs org-mode syntax, for docs written in those formats.
