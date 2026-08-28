@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@f355b1dcaf1a1c56ccead97cc540a259faf4bd5a # v2.87.0
+        with:
+          tool: hyperfine
+      - name: Basic benchmark
+        run: hyperfine -N --warmup 3 -m 5 'true'
+      - name: Comparison with named commands
+        run: hyperfine -N -m 5 -n 'true' 'true' -n 'false (ignored failure)' -i 'false'
+      - name: Parameter list sweep
+        run: hyperfine -N -m 3 -L n 1,2,3 'true {n}'
+      - name: Export formats
+        run: |
+          hyperfine -N -m 5 --export-json out.json --export-markdown out.md --export-csv out.csv 'true'
+          jq -e '.results[0] | has("mean") and has("stddev") and has("median")' out.json
+          cat out.md
+          cat out.csv
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0

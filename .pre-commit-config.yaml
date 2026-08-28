@@ -1,0 +1,77 @@
+# Run with prek (https://github.com/j178/prek), a drop-in pre-commit replacement.
+# Priority order for prek's parallel execution: 10 formatters/checkers, 20 linters that need 10 to run first,
+# 40 end-of-file-fixer, 50 whitespace.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        priority: 10
+      - id: detect-private-key
+        priority: 10
+      - id: end-of-file-fixer
+        priority: 40
+      - id: trailing-whitespace
+        priority: 50
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        priority: 10
+
+  - repo: https://github.com/tombi-toml/tombi-pre-commit
+    rev: v1.4.1
+    hooks:
+      - id: tombi-format
+        priority: 10
+      - id: tombi-lint
+        priority: 20
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.38.0
+    hooks:
+      - id: check-github-workflows
+        priority: 10
+      - id: check-jsonschema
+        name: check-jsonschema (evals.json)
+        priority: 10
+        files: ^evals/evals\.json$
+        args: [--schemafile, evals/evals.schema.json]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+        priority: 10
+
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.29.0
+    hooks:
+      - id: zizmor
+        priority: 10
+
+  - repo: https://github.com/lycheeverse/lychee
+    rev: lychee-v0.24.2
+    hooks:
+      - id: lychee
+        priority: 10
+        args: [--config, .github/lychee.toml]
+        files: \.mdx?$
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: "1.0.0"
+    hooks:
+      - id: mdformat
+        priority: 10
+        args: [--wrap=120]  # matches markdownlint-cli2's MD013 below
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-frontmatter  # else SKILL.md's YAML frontmatter gets mangled
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.2
+    hooks:
+      - id: markdownlint-cli2
+        priority: 20
+        args: [--config, .github/.markdownlint-cli2.yaml]
