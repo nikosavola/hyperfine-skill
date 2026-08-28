@@ -1,0 +1,98 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nikosavola/hyperfine-skill/main/evals/evals.schema.json",
+  "skill_name": "hyperfine",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How fast is `ls -la /`? Can you benchmark it?",
+      "expected_output": "The agent runs hyperfine on the command and reports the mean runtime and stddev, rather than guessing or running it once with `time`.",
+      "expectations": [
+        "The agent invoked hyperfine, not a single `time` call or an estimate",
+        "The reported result includes a mean and either a stddev or a range, not just a single number",
+        "The agent did not fabricate a runtime without actually running hyperfine"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Generate a large text file (a few hundred thousand lines is fine, e.g. with `seq`) and then tell me: is plain `sort` on it faster or slower than `sort -S 1G`?",
+      "expected_output": "The agent creates the test file itself, then runs a single hyperfine invocation comparing both sort invocations (rather than two separate benchmark runs it compares by eye), names them for readability, and reports which one is faster and by what factor.",
+      "expectations": [
+        "The agent ran a single hyperfine invocation with both sort commands passed together for a relative comparison",
+        "The agent used -n/--command-name (or equivalent) to label the two variants",
+        "The reported answer states which command was faster and by what relative factor, matching hyperfine's own comparison output"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Benchmark the command `true` for me - I want to know exactly how fast a no-op process is.",
+      "expected_output": "Since `true` runs in far under 5ms, the agent uses -N/--shell=none so shell startup overhead doesn't swamp the measurement, and does not report a shell-inflated number as the answer.",
+      "expectations": [
+        "The agent passed -N or --shell=none when invoking hyperfine",
+        "The agent did not report shell-startup-inflated timing as the runtime of `true` itself"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "`sleep 45` is standing in for our full release build, which reliably takes about the same 45 seconds. Can you benchmark it so I can compare against a future run after my change?",
+      "expected_output": "The agent bounds the number of runs explicitly (e.g. -r/--min-runs/--max-runs with a small number) rather than letting hyperfine's default of at least 10 runs turn a 45-second command into a 7.5-minute benchmark.",
+      "expectations": [
+        "The agent passed an explicit run-count-limiting flag (-r, -m, or -M) rather than relying on hyperfine's bare default for a known-slow command",
+        "The agent did not launch a benchmark that would run the 45-second command 10+ times without first bounding it"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Benchmark `grep -rn \"the\" .` in this repo, but I want to know its warm-cache speed since that's how it'll actually be used in CI.",
+      "expected_output": "The agent uses --warmup so the filesystem cache is filled before the timed runs, rather than reporting a cold-cache first run as representative.",
+      "expectations": [
+        "The agent passed -w/--warmup when invoking hyperfine",
+        "The agent's explanation reflects that warmup runs are used specifically to get a representative warm-cache number"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Benchmark `curl --fail http://localhost:9/definitely-down` - I know it'll fail every time, I just want to know how long the failed attempt takes.",
+      "expected_output": "Since the command is expected to exit non-zero every run, the agent passes -i/--ignore-failure so hyperfine doesn't abort the whole benchmark on the first failure.",
+      "expectations": [
+        "The agent passed -i or --ignore-failure when invoking hyperfine",
+        "The agent did not report that the benchmark failed/aborted due to the expected non-zero exit code"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I want to see how `sleep {n}` scales for n = 0.1, 0.2, 0.4, and 0.8 seconds - it's standing in for a build step whose cost scales with an input size we control. Sweep through all four values in one go rather than running each separately.",
+      "expected_output": "The agent uses hyperfine's parameter sweep support (-L or -P) to run all four values in a single invocation, rather than manually writing out and running one hyperfine command per value.",
+      "expectations": [
+        "The agent used -L/--parameter-list or -P/--parameter-scan (with {var} substitution) rather than issuing separate hyperfine invocations per value",
+        "The reported result covers all four values, not just one"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "We're deciding between two implementations for a hot path. `sleep 0.2` stands in for the old one's cost and `sleep 0.1` stands in for the new one's. Benchmark them and put the comparison table straight into a PR description for me.",
+      "expected_output": "Since the result is going into a written PR description, the agent uses --export-markdown (or otherwise produces a properly formatted table) rather than hand-transcribing numbers from the terminal output.",
+      "expectations": [
+        "The agent used --export-markdown, or built an equivalent formatted table from --export-json, rather than pasting raw terminal output",
+        "The produced table includes both commands with their timing and a relative comparison"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "My Python script feels slow. Can you profile it and tell me which function is eating all the time?",
+      "expected_output": "The agent recognizes this is a profiling question (where time goes inside the program), not a benchmarking question, and does not reach for hyperfine - it uses or suggests a real profiler (e.g. cProfile, py-spy) instead.",
+      "expectations": [
+        "The agent did not invoke hyperfine for this request",
+        "The agent's response involves or recommends a profiling tool that reports per-function/per-line time, not a black-box wall-clock timer"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "I need to benchmark this one-line Python expression: `x = 2 ** 10`. It's obviously extremely fast, but I need precise numbers for a report.",
+      "expected_output": "Since this is a sub-millisecond in-process expression, the agent does not benchmark it by shelling out to `python -c` with hyperfine (process-spawn overhead would dominate); it uses or recommends a language-native microbenchmark tool such as `timeit` instead.",
+      "expectations": [
+        "The agent did not present a hyperfine invocation wrapping a fast in-process expression as a valid measurement of that expression's own runtime",
+        "The agent used or recommended a language-native microbenchmarking approach (e.g. Python's timeit) instead"
+      ]
+    }
+  ]
+}
